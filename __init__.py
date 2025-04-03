@@ -1,28 +1,27 @@
-import os
-import json
 from aqt import mw
 from aqt.utils import showInfo
 from aqt.qt import QShortcut, QKeySequence
-from .image_utils import capture_screenshot_with_pillow, convert_image
+import os
 
-# path to the add-on's configuration file
-CONFIG_PATH = os.path.join(mw.pm.addonFolder(), "your-addon-name", "config.json")
+def capture_screenshot():
+    # capture the whole screen using aqt's primary screen
+    screen = mw.app.primaryScreen()
+    if screen is None:
+        showInfo("no screen found.")
+        return None
 
-def load_config():
-    if not os.path.exists(CONFIG_PATH):
-        default_config = {"image_field_name": "Front"}
-        with open(CONFIG_PATH, "w") as f:
-            json.dump(default_config, f, indent=4)
-        return default_config
+    screenshot = screen.grabWindow(0)  # capture the whole screen
     
-    with open(CONFIG_PATH, "r") as f:
-        return json.load(f)
+    # specify file format and name
+    file_name = "screenshot.png"
+    file_path = os.path.join(mw.col.media.dir(), file_name)
+    
+    # save the screenshot to anki's media folder
+    screenshot.save(file_path, "PNG")
+    
+    return file_name
 
 def add_screenshot_to_last_card():
-    # load configuration
-    config = load_config()
-    field_name = config.get("image_field_name", "Front")
-
     # get the last-added note
     note_ids = mw.col.db.list("SELECT id FROM notes ORDER BY id DESC LIMIT 1")
     if not note_ids:
@@ -31,29 +30,18 @@ def add_screenshot_to_last_card():
 
     note = mw.col.get_note(note_ids[0])
 
-    # find the field index by name
-    try:
-        field_index = note.model()["flds"].index(next(f for f in note.model()["flds"] if f["name"] == field_name))
-    except StopIteration:
-        showInfo(f"field '{field_name}' not found in the note model.")
+    # capture screenshot and add it to the note
+    img_file = capture_screenshot()
+    if not img_file:
         return
 
-    # capture and convert screenshot
-    try:
-        raw_image = capture_screenshot_with_pillow()
-        output_path = os.path.join(mw.col.media.dir(), "screenshot.png")
-        convert_image(raw_image, output_path)  # apply pillow processing
-    except Exception as e:
-        showInfo(f"error capturing or converting screenshot: {e}")
-        return
-
-    # add the image to the note
-    note.fields[field_index] += f'<img src="screenshot.png">'
+    note.fields[0] += f'<img src="{img_file}">'  # assume field[0] is used
     note.flush()  # save changes
     
-    showInfo(f"screenshot added to field '{field_name}'.")
+    showInfo("screenshot added to the last card.")
 
 def setup_hotkey():
+    # define a hotkey (e.g., Ctrl+Shift+S)
     shortcut = QShortcut(QKeySequence("Ctrl+Shift+S"), mw)
     shortcut.activated.connect(add_screenshot_to_last_card)
 

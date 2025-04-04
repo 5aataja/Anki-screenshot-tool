@@ -2,6 +2,9 @@ from aqt import mw
 from aqt.utils import showInfo
 from aqt.qt import QShortcut, QKeySequence
 import os
+from datetime import datetime
+import tempfile
+import shutil
 
 def capture_screenshot():
     # capture the whole screen using aqt's primary screen
@@ -13,7 +16,8 @@ def capture_screenshot():
     screenshot = screen.grabWindow(0)  # capture the whole screen
     
     # specify file format and name
-    file_name = "screenshot.png"
+    file_timestamp = f'{datetime.now():%Y%m%d%H%M%S}'
+    file_name = f"{file_timestamp}.png"
     file_path = os.path.join(mw.col.media.dir(), file_name)
     
     # save the screenshot to anki's media folder
